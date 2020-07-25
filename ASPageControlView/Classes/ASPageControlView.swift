@@ -1,5 +1,6 @@
 //
 //  ASPageControlView.swift
+//  ASPageControlAnimation
 //
 //  Created by Arijit Sarkar on 15/05/18.
 //
@@ -14,14 +15,16 @@ class ASPageControlView: UIView {
     @IBInspectable var borderColor: UIColor = .black
     @IBInspectable var borderWidth: CGFloat = 0.0
     @IBInspectable var padding: CGFloat = 10.0
-    @IBInspectable var totalPages: Int = 2
+    @IBInspectable var currentSelectedPage: Int = 0
+    @IBInspectable var totalPages: Int = 5
     @IBInspectable var animationDuration: Double = 0.3
     
     private var indicatorHeight: CGFloat!
     private var indicatorWidth: CGFloat!
     private var indicators: [UIView]!
-    private var currentPageIndex = 0
     private var currentPageIndicator: UIView!
+    private var queuedPageNumbersList = [Int]()
+    private var isAnimationOngoing = false
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -61,7 +64,7 @@ class ASPageControlView: UIView {
         
         currentPageIndicator = UIView()
         self.addSubview(currentPageIndicator)
-        currentPageIndicator.frame = CGRect(x: CGFloat(currentPageIndex) * (indicatorWidth + padding), y: CGFloat(0.0), width: indicatorWidth, height: indicatorHeight)
+        currentPageIndicator.frame = CGRect(x: CGFloat(currentSelectedPage) * (indicatorWidth + padding), y: CGFloat(0.0), width: indicatorWidth, height: indicatorHeight)
         currentPageIndicator.backgroundColor = activeColor
         currentPageIndicator.layer.cornerRadius = min(indicatorWidth, indicatorHeight)/2
         currentPageIndicator.layer.masksToBounds = true
@@ -69,20 +72,43 @@ class ASPageControlView: UIView {
     }
     
     func setCurrentPage(to: Int) {
-        animateIndicator(from: currentPageIndex, to: to)
-        currentPageIndex = to
+        if isAnimationOngoing {
+            queuedPageNumbersList.append(to)
+            return
+        }
+        animateIndicator(from: currentSelectedPage, to: to)
+        currentSelectedPage = to
     }
     
     private func animateIndicator(from: Int, to: Int) {
         if to >= 0 && to < totalPages {
-            from < to ? animateForward(withRepeatCount: to - from) : animateBackward(withRepeatCount: from - to)
+            if abs(from - to) > 0 {
+                from < to ? animateForward(withRepeatCount: to - from) : animateBackward(withRepeatCount: from - to)
+            } else {
+                animateToQueuedDestinationPages()
+            }
         } else {
             print("Invalid Current Page Index")
         }
     }
     
+    private func animateToQueuedDestinationPages() {
+        DispatchQueue.main.async {
+            if let pageNo = self.queuedPageNumbersList.first {
+                print("Pending Animation from: \(self.currentSelectedPage) \(pageNo)")
+                self.queuedPageNumbersList = Array(self.queuedPageNumbersList.dropFirst(1))
+                self.setCurrentPage(to: pageNo)
+            }
+        }
+    }
+    
     private func animateForward(withRepeatCount count: Int) {
-        if count == 0 { return }
+        if count == 0 {
+            isAnimationOngoing = false
+            animateToQueuedDestinationPages()
+            return
+        }
+        isAnimationOngoing = true
         UIView.animate(withDuration: animationDuration, animations: {
             let nextIndicatorEndPoint = self.padding + self.indicatorWidth
             self.currentPageIndicator.frame.size.width = self.indicatorWidth + nextIndicatorEndPoint
@@ -97,7 +123,12 @@ class ASPageControlView: UIView {
     }
     
     private func animateBackward(withRepeatCount count: Int) {
-        if count == 0 { return }
+        if count == 0 {
+            isAnimationOngoing = false
+            animateToQueuedDestinationPages()
+            return
+        }
+        isAnimationOngoing = true
         UIView.animate(withDuration: animationDuration, animations: {
             self.currentPageIndicator.frame.size.width = self.padding + self.indicatorWidth * 2
             self.currentPageIndicator.frame.origin.x -= self.padding + self.indicatorWidth
