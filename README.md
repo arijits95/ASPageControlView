@@ -20,7 +20,7 @@ it, simply add the following line to your Podfile:
 ```ruby
 pod 'ASPageControlView'
 ```
-![alt-text](https://media.giphy.com/media/cCbKd8UHrFInTo36kw/giphy.gif)
+![alt-text](https://github.com/arijits95/ASPageControlView/blob/master/Resources/ASPAgeControlDemoVideo.gif)
 
 A simple and easy to use page control view with a beautiful animation to mark the change in page.
 
